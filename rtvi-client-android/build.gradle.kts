@@ -46,3 +46,30 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
 }
+
+publishing {
+    repositories {
+        maven {
+            url = rootProject.layout.buildDirectory.dir("RTVILocalRepo").get().asFile.toURI()
+            name = "RTVILocalRepo"
+        }
+    }
+
+    publications {
+        register<MavenPublication>("release") {
+            groupId = "ai.rtvi"
+            artifactId = "client"
+            version = "0.1.0"
+
+            pom {
+                name.set("RTVI Client")
+                description.set("Core RTVI client library for Android")
+                url.set("https://github.com/rtvi-ai/rtvi-client-android")
+            }
+
+            afterEvaluate {
+                from(components["release"])
+            }
+        }
+    }
+}

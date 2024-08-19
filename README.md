@@ -13,7 +13,7 @@ packages.) The base `VoiceClient` has no transport included.
 Add the following dependency to your `build.gradle` file:
 
 ```
-ai.rtvi:rtvi-client-android:0.1.0
+implementation "ai.rtvi:client:0.1.0"
 ```
 
 Then instantiate the `VoiceClient` from your code, specifying the backend `baseUrl` and transport.

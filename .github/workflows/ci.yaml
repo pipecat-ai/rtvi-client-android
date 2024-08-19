@@ -35,3 +35,12 @@ jobs:
 
       - name: Build core SDK
         run: ./gradlew :rtvi-client-android:assembleRelease
+
+      - name: Generate Maven repo
+        run: ./gradlew :rtvi-client-android:publishAllPublicationsToRTVILocalRepoRepository
+
+      - name: Upload Maven repo
+        uses: actions/upload-artifact@v4
+        with:
+          name: Release Library Repo
+          path: build/RTVILocalRepo
