@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+    inputs:
+      sdk_git_ref:
+        type: string
+        description: "Which git ref of the SDK to build"
+
+concurrency:
+  group: build-android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdk:
+    name: "SDK"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.sdk_git_ref || github.ref }}
+
+      - name: "Install Java"
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build core SDK
+        run: ./gradlew :rtvi-client-android:assembleRelease
