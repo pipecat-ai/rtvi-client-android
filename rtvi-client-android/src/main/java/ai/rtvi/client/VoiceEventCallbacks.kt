@@ -85,12 +85,12 @@ abstract class VoiceEventCallbacks {
     /**
      * Invoked when the bot starts talking.
      */
-    open fun onBotStartedSpeaking(participant: Participant) {}
+    open fun onBotStartedSpeaking() {}
 
     /**
      * Invoked when the bot stops talking.
      */
-    open fun onBotStoppedSpeaking(participant: Participant) {}
+    open fun onBotStoppedSpeaking() {}
 
     /**
      * Invoked when the local user starts talking.
@@ -189,12 +189,12 @@ internal class CallbackInterceptor(vararg listeners: VoiceEventCallbacks): Voice
         callbacks.forEach { it.onRemoteAudioLevel(level, participant) }
     }
 
-    override fun onBotStartedSpeaking(participant: Participant) {
-        callbacks.forEach { it.onBotStartedSpeaking(participant) }
+    override fun onBotStartedSpeaking() {
+        callbacks.forEach { it.onBotStartedSpeaking() }
     }
 
-    override fun onBotStoppedSpeaking(participant: Participant) {
-        callbacks.forEach { it.onBotStoppedSpeaking(participant) }
+    override fun onBotStoppedSpeaking() {
+        callbacks.forEach { it.onBotStoppedSpeaking() }
     }
 
     override fun onUserStartedSpeaking() {

@@ -30,6 +30,8 @@ data class MsgServerToClient(
         const val BotTranscription = "tts-text"
         const val UserStartedSpeaking = "user-started-speaking"
         const val UserStoppedSpeaking = "user-stopped-speaking"
+        const val BotStartedSpeaking = "bot-started-speaking"
+        const val BotStoppedSpeaking = "bot-stopped-speaking"
     }
 
     object Data {

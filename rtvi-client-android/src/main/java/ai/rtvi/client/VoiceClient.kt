@@ -166,6 +166,14 @@ open class VoiceClient(
                         callbacks.onUserStoppedSpeaking()
                     }
 
+                    MsgServerToClient.Type.BotStartedSpeaking -> {
+                        callbacks.onBotStartedSpeaking()
+                    }
+
+                    MsgServerToClient.Type.BotStoppedSpeaking -> {
+                        callbacks.onBotStoppedSpeaking()
+                    }
+
                     else -> {
 
                         var match = false
