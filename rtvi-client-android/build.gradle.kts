@@ -66,6 +66,26 @@ publishing {
                 name.set("RTVI Client")
                 description.set("Core RTVI client library for Android")
                 url.set("https://github.com/rtvi-ai/rtvi-client-android")
+
+                developers {
+                    developer {
+                        id.set("rtvi.ai")
+                        name.set("rtvi.ai")
+                    }
+                }
+
+                licenses {
+                    license {
+                        name.set("BSD 2-Clause License")
+                        url.set("https://github.com/rtvi-ai/rtvi-client-android/blob/main/LICENSE")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:git://github.com/rtvi-ai/rtvi-client-android.git")
+                    developerConnection.set("scm:git:ssh://github.com:rtvi-ai/rtvi-client-android.git")
+                    url.set("https://github.com/rtvi-ai/rtvi-client-android")
+                }
             }
 
             afterEvaluate {
