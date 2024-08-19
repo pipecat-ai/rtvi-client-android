@@ -21,6 +21,9 @@ jobs:
   sdk:
     name: "SDK"
     runs-on: ubuntu-latest
+    env:
+      RTVI_GPG_SIGNING_KEY: ${{ secrets.RTVI_GPG_SIGNING_KEY }}
+      RTVI_GPG_SIGNING_PASSPHRASE: ${{ secrets.RTVI_GPG_SIGNING_PASSPHRASE }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
