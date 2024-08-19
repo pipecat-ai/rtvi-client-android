@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.jetbrains.dokka)
     `maven-publish`
+    signing
 }
 
 android {
@@ -72,4 +73,12 @@ publishing {
             }
         }
     }
+}
+
+signing {
+    val signingKey = System.getenv("RTVI_GPG_SIGNING_KEY")
+    val signingPassphrase = System.getenv("RTVI_GPG_SIGNING_PASSPHRASE")
+
+    useInMemoryPgpKeys(signingKey, signingPassphrase)
+    sign(publishing.publications)
 }
