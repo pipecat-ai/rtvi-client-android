@@ -99,6 +99,8 @@ signing {
     val signingKey = System.getenv("RTVI_GPG_SIGNING_KEY")
     val signingPassphrase = System.getenv("RTVI_GPG_SIGNING_PASSPHRASE")
 
-    useInMemoryPgpKeys(signingKey, signingPassphrase)
-    sign(publishing.publications)
+    if (!signingKey.isNullOrEmpty() || !signingPassphrase.isNullOrEmpty()) {
+        useInMemoryPgpKeys(signingKey, signingPassphrase)
+        sign(publishing.publications)
+    }
 }
