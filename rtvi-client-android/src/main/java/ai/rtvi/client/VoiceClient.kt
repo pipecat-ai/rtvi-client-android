@@ -467,6 +467,13 @@ open class VoiceClient(
         get() = transport.isCamEnabled()
 
     /**
+     * The expiry time for the transport session, if applicable. Measured in seconds
+     * since the UNIX epoch (UTC).
+     */
+    val expiry
+        get() = transport.expiry()
+
+    /**
      * Returns a list of participant media tracks.
      */
     val tracks
