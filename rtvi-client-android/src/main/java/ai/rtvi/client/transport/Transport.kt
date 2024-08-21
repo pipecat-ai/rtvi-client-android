@@ -34,6 +34,12 @@ abstract class Transport {
     abstract fun isCamEnabled(): Boolean
     abstract fun isMicEnabled(): Boolean
 
+    /**
+     * The expiry time for the transport session, if applicable. Measured in seconds
+     * since the UNIX epoch (UTC).
+     */
+    abstract fun expiry(): Long?
+
     abstract fun sendMessage(message: MsgClientToServer): Future<Unit, VoiceError>
 
     abstract fun state(): TransportState
