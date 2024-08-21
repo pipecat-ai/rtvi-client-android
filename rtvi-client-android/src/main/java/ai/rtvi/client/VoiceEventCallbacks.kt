@@ -5,6 +5,7 @@ import ai.rtvi.client.types.MediaDeviceInfo
 import ai.rtvi.client.types.Participant
 import ai.rtvi.client.types.PipecatMetrics
 import ai.rtvi.client.types.ServiceConfig
+import ai.rtvi.client.types.Tracks
 import ai.rtvi.client.types.Transcript
 import ai.rtvi.client.types.TransportState
 
@@ -127,6 +128,11 @@ abstract class VoiceEventCallbacks {
      * Invoked when the state of the input devices changes.
      */
     open fun onInputsUpdated(camera: Boolean, mic: Boolean) {}
+
+    /**
+     * Invoked when the set of available cam/mic tracks changes.
+     */
+    open fun onTracksUpdated(tracks: Tracks) {}
 }
 
 internal class CallbackInterceptor(vararg listeners: VoiceEventCallbacks): VoiceEventCallbacks() {
@@ -223,5 +229,9 @@ internal class CallbackInterceptor(vararg listeners: VoiceEventCallbacks): Voice
 
     override fun onInputsUpdated(camera: Boolean, mic: Boolean) {
         callbacks.forEach { it.onInputsUpdated(camera = camera, mic = mic) }
+    }
+
+    override fun onTracksUpdated(tracks: Tracks) {
+        callbacks.forEach { it.onTracksUpdated(tracks) }
     }
 }
