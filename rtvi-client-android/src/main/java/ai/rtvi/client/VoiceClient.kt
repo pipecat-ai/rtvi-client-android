@@ -229,13 +229,12 @@ open class VoiceClient(
 
         // Send POST request to the provided base_url to connect and start the bot
 
-        val body = JSON_INSTANCE.encodeToString(
-            ConnectionBundle.serializer(),
-            ConnectionBundle(
-                services = options.services.associate { it.service to it.value },
-                config = options.config
-            )
-        ).toRequestBody("application/json".toMediaType())
+        val body = ConnectionBundle(
+            services = options.services.associate { it.service to it.value },
+            config = options.config
+        )
+            .serializeWithCustomParams(options.customBodyParams)
+            .toRequestBody("application/json".toMediaType())
 
         val currentConnection = Connection().apply { connection = this }
 
