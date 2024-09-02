@@ -60,7 +60,7 @@ publishing {
         register<MavenPublication>("release") {
             groupId = "ai.rtvi"
             artifactId = "client"
-            version = "0.1.2"
+            version = "0.1.3"
 
             pom {
                 name.set("RTVI Client")
