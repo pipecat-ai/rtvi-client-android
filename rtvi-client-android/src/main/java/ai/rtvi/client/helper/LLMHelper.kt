@@ -30,7 +30,7 @@ class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
     }
 
     abstract class Callbacks {
-        fun onLLMJsonCompletion(jsonString: String) {}
+        open fun onLLMJsonCompletion(jsonString: String) {}
 
         /**
          * Invoked when the LLM attempts to invoke a function. The provided callback must be
@@ -39,7 +39,7 @@ class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
          * @param func Details of the function call
          * @param onResult Invoke this callback to provide a return value to the LLM
          */
-        fun onLLMFunctionCall(func: LLMFunctionCall, onResult: (Value) -> Unit) {
+        open fun onLLMFunctionCall(func: LLMFunctionCall, onResult: (Value) -> Unit) {
             onResult(Value.Object("error" to Value.Str("no handler registered")))
         }
     }
