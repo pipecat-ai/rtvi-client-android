@@ -13,8 +13,8 @@ sealed interface HttpError {
     /**
      * The HTTP request returned an invalid status code.
      */
-    data class BadStatusCode(val code: Int) : HttpError {
-        override val description = "Server returned status code $code"
+    data class BadStatusCode(val code: Int, val responseBody: String?) : HttpError {
+        override val description = "Server returned status code $code: response body '$responseBody'"
     }
 
     /**

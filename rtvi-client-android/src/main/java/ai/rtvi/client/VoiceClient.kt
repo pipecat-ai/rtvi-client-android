@@ -130,12 +130,19 @@ open class VoiceClient(
                     }
 
                     MsgServerToClient.Type.ErrorResponse -> {
-                        handleResponse(msg) { respondTo ->
-                            val data =
-                                JSON_INSTANCE.decodeFromJsonElement<MsgServerToClient.Data.Error>(
-                                    msg.data
-                                )
-                            respondTo(Result.Err(VoiceError.ErrorResponse(data.error)))
+
+                        val data =
+                            JSON_INSTANCE.decodeFromJsonElement<MsgServerToClient.Data.Error>(
+                                msg.data
+                            )
+
+                        try {
+                            handleResponse(msg) { respondTo ->
+                                respondTo(Result.Err(VoiceError.ErrorResponse(data.error)))
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Got exception handling error response", e)
+                            callbacks.onBackendError(data.error)
                         }
                     }
 

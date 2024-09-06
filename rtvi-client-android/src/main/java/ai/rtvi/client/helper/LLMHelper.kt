@@ -61,7 +61,7 @@ class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
                                 LLMFunctionCallResult(
                                     functionName = data.functionName,
                                     toolCallId = data.toolCallId,
-                                    args = data.args,
+                                    arguments = data.args,
                                     result = result
                                 )
                             )
@@ -160,7 +160,7 @@ data class LLMFunctionCallResult(
     val functionName: String,
     @SerialName("tool_call_id")
     val toolCallId: String,
-    val args: Value,
+    val arguments: Value,
     val result: Value,
 )
 

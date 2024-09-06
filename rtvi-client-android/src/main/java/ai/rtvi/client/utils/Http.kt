@@ -38,12 +38,17 @@ internal fun post(
                 return@thread
             }
 
-            if (result.code != 200) {
-                promise.resolveErr(HttpError.BadStatusCode(result.code))
+            val resultBody = try {
+                result.body?.string()
+            } catch (e: Exception) {
+                promise.resolveErr(HttpError.ExceptionThrown(e))
                 return@thread
             }
 
-            val resultBody = result.body?.string()
+            if (result.code != 200) {
+                promise.resolveErr(HttpError.BadStatusCode(result.code, resultBody))
+                return@thread
+            }
 
             if (resultBody == null) {
                 promise.resolveErr(HttpError.MissingResponseBody)
