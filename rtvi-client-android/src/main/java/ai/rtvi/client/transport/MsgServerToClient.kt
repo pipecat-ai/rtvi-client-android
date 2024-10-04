@@ -27,11 +27,24 @@ data class MsgServerToClient(
         const val DescribeActionsResponse = "actions-available"
         const val ActionResponse = "action-response"
         const val UserTranscription = "user-transcription"
-        const val BotTranscription = "tts-text"
+        const val BotTranscriptionLegacy = "tts-text"
+        const val BotTranscription = "bot-transcription"
         const val UserStartedSpeaking = "user-started-speaking"
         const val UserStoppedSpeaking = "user-stopped-speaking"
         const val BotStartedSpeaking = "bot-started-speaking"
         const val BotStoppedSpeaking = "bot-stopped-speaking"
+        const val Config = "config"
+
+        // Service-specific
+        const val BotLlmText = "bot-llm-text" // Streaming chunk/word, directly after LLM
+        const val BotLlmStarted = "bot-llm-started" // Unused
+        const val BotLlmStopped = "bot-llm-stopped" // Unused
+        const val BotTtsText = "bot-tts-text" // Unused
+        const val BotTtsStarted = "bot-tts-started" // Unused
+        const val BotTtsStopped = "bot-tts-stopped" // Unused
+
+        // Storage
+        const val StorageItemStored = "storage-item-stored" // Item was stored
     }
 
     object Data {
@@ -65,6 +78,22 @@ data class MsgServerToClient(
         @Serializable
         data class ActionResponse(
             val result: Value
+        )
+
+        @Serializable
+        data class BotLLMTextData(
+            val text: String
+        )
+
+        @Serializable
+        data class BotTTSTextData(
+            val text: String
+        )
+
+        @Serializable
+        data class StorageItemStoredData(
+            val action: String,
+            val items: Value
         )
     }
 }

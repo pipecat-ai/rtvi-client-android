@@ -1,12 +1,12 @@
 package ai.rtvi.client
 
-import ai.rtvi.client.helper.RegisteredVoiceClient
-import ai.rtvi.client.helper.VoiceClientHelper
+import ai.rtvi.client.helper.RTVIClientHelper
+import ai.rtvi.client.helper.RegisteredRTVIClient
 import ai.rtvi.client.result.Future
 import ai.rtvi.client.result.Promise
+import ai.rtvi.client.result.RTVIError
+import ai.rtvi.client.result.RTVIException
 import ai.rtvi.client.result.Result
-import ai.rtvi.client.result.VoiceError
-import ai.rtvi.client.result.VoiceException
 import ai.rtvi.client.result.resolvedPromiseErr
 import ai.rtvi.client.result.withPromise
 import ai.rtvi.client.result.withTimeout
@@ -29,7 +29,9 @@ import ai.rtvi.client.types.Value
 import ai.rtvi.client.utils.ConnectionBundle
 import ai.rtvi.client.utils.JSON_INSTANCE
 import ai.rtvi.client.utils.ThreadRef
+import ai.rtvi.client.utils.parseServerSentEvents
 import ai.rtvi.client.utils.post
+import ai.rtvi.client.utils.valueFrom
 import android.util.Log
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -44,17 +46,15 @@ import okhttp3.RequestBody.Companion.toRequestBody
  *
  * The client must be cleaned up using the [release] method when it is no longer required.
  *
- * @param baseUrl URL of the RTVI backend.
  * @param transport Transport for media streaming.
  * @param callbacks Callbacks invoked when changes occur in the voice session.
  * @param options Additional options for configuring the client and backend.
  */
 @Suppress("unused")
-open class VoiceClient(
-    private val baseUrl: String,
+open class RTVIClient(
     transport: TransportFactory,
-    callbacks: VoiceEventCallbacks,
-    private var options: VoiceClientOptions = VoiceClientOptions()
+    callbacks: RTVIEventCallbacks,
+    private var options: RTVIClientOptions,
 ) {
     companion object {
         private const val TAG = "VoiceClient"
@@ -65,12 +65,12 @@ open class VoiceClient(
      */
     val thread = ThreadRef.forCurrent()
 
-    private val callbacks = CallbackInterceptor(object : VoiceEventCallbacks() {
+    private val callbacks = CallbackInterceptor(object : RTVIEventCallbacks() {
         override fun onBackendError(message: String) {}
 
         override fun onDisconnected() {
             discardWaitingResponses()
-            connection?.ready?.resolveErr(VoiceError.OperationCancelled)
+            connection?.ready?.resolveErr(RTVIError.OperationCancelled)
             connection = null
         }
     }, callbacks)
@@ -78,11 +78,11 @@ open class VoiceClient(
     private val helpers = mutableMapOf<String, RegisteredHelper>()
 
     private val awaitingServerResponse =
-        mutableMapOf<String, (Result<JsonElement, VoiceError>) -> Unit>()
+        mutableMapOf<String, (Result<JsonElement, RTVIError>) -> Unit>()
 
     private inline fun handleResponse(
         msg: MsgServerToClient,
-        action: ((Result<JsonElement, VoiceError>) -> Unit) -> Unit
+        action: ((Result<JsonElement, RTVIError>) -> Unit) -> Unit
     ) {
         val id = msg.id ?: throw Exception("${msg.type} missing ID")
 
@@ -95,16 +95,14 @@ open class VoiceClient(
     private val transportCtx = object : TransportContext {
 
         override val options
-            get() = this@VoiceClient.options
+            get() = this@RTVIClient.options
 
         override val callbacks
-            get() = this@VoiceClient.callbacks
+            get() = this@RTVIClient.callbacks
 
-        override val thread = this@VoiceClient.thread
+        override val thread = this@RTVIClient.thread
 
         override fun onMessage(msg: MsgServerToClient) = thread.runOnThread {
-
-            Log.i(TAG, "onMessage($msg)")
 
             try {
                 when (msg.type) {
@@ -113,7 +111,7 @@ open class VoiceClient(
                         val data =
                             JSON_INSTANCE.decodeFromJsonElement<MsgServerToClient.Data.BotReady>(msg.data)
 
-                        this@VoiceClient.transport.setState(TransportState.Ready)
+                        this@RTVIClient.transport.setState(TransportState.Ready)
 
                         connection?.ready?.resolveOk(Unit)
 
@@ -138,7 +136,7 @@ open class VoiceClient(
 
                         try {
                             handleResponse(msg) { respondTo ->
-                                respondTo(Result.Err(VoiceError.ErrorResponse(data.error)))
+                                respondTo(Result.Err(RTVIError.ErrorResponse(data.error)))
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "Got exception handling error response", e)
@@ -160,7 +158,8 @@ open class VoiceClient(
                         callbacks.onUserTranscript(data)
                     }
 
-                    MsgServerToClient.Type.BotTranscription -> {
+                    MsgServerToClient.Type.BotTranscription,
+                    MsgServerToClient.Type.BotTranscriptionLegacy -> {
                         val text = (msg.data.jsonObject.get("text") as JsonPrimitive).content
                         callbacks.onBotTranscript(text)
                     }
@@ -179,6 +178,27 @@ open class VoiceClient(
 
                     MsgServerToClient.Type.BotStoppedSpeaking -> {
                         callbacks.onBotStoppedSpeaking()
+                    }
+
+                    MsgServerToClient.Type.BotLlmText -> {
+                        val data: MsgServerToClient.Data.BotLLMTextData =
+                            JSON_INSTANCE.decodeFromJsonElement(msg.data)
+
+                        callbacks.onBotLLMText(data)
+                    }
+
+                    MsgServerToClient.Type.BotTtsText -> {
+                        val data: MsgServerToClient.Data.BotTTSTextData =
+                            JSON_INSTANCE.decodeFromJsonElement(msg.data)
+
+                        callbacks.onBotTTSText(data)
+                    }
+
+                    MsgServerToClient.Type.StorageItemStored -> {
+                        val data: MsgServerToClient.Data.StorageItemStoredData =
+                            JSON_INSTANCE.decodeFromJsonElement(msg.data)
+
+                        callbacks.onStorageItemStored(data)
                     }
 
                     else -> {
@@ -208,7 +228,7 @@ open class VoiceClient(
     private val transport: Transport = transport.createTransport(transportCtx)
 
     private inner class Connection {
-        val ready = Promise<Unit, VoiceError>(thread)
+        val ready = Promise<Unit, RTVIError>(thread)
     }
 
     private var connection: Connection? = null
@@ -218,17 +238,20 @@ open class VoiceClient(
      *
      * @return A Future, representing the asynchronous result of this operation.
      */
-    fun initDevices(): Future<Unit, VoiceError> = transport.initDevices()
+    fun initDevices(): Future<Unit, RTVIError> = transport.initDevices()
+
+    @Deprecated("start() renamed to connect()")
+    fun start() = connect()
 
     /**
      * Initiate an RTVI session, connecting to the backend.
      */
-    fun start(): Future<Unit, VoiceError> = thread.runOnThreadReturningFuture {
+    fun connect(): Future<Unit, RTVIError> = thread.runOnThreadReturningFuture {
 
         if (connection != null) {
             return@runOnThreadReturningFuture resolvedPromiseErr(
                 thread,
-                VoiceError.PreviousConnectionStillActive
+                RTVIError.PreviousConnectionStillActive
             )
         }
 
@@ -237,28 +260,28 @@ open class VoiceClient(
         // Send POST request to the provided base_url to connect and start the bot
 
         val body = ConnectionBundle(
-            services = options.services.associate { it.service to it.value },
-            config = options.config
+            services = options.services?.associate { it.service to it.value },
+            config = options.config + options.params.config
         )
-            .serializeWithCustomParams(options.customBodyParams)
+            .serializeWithCustomParams(options.customBodyParams + options.params.requestData)
             .toRequestBody("application/json".toMediaType())
 
         val currentConnection = Connection().apply { connection = this }
 
         return@runOnThreadReturningFuture post(
             thread = thread,
-            url = baseUrl,
+            url = options.params.baseUrl + options.params.endpoints.connect,
             body = body,
-            customHeaders = options.customHeaders
+            customHeaders = options.customHeaders + options.params.headers
         )
-            .mapError<VoiceError> {
-                VoiceError.FailedToFetchAuthBundle(it)
+            .mapError<RTVIError> {
+                RTVIError.HttpError(it)
             }
             .chain { authBundle ->
                 if (currentConnection == connection) {
                     transport.connect(AuthBundle(authBundle))
                 } else {
-                    resolvedPromiseErr(thread, VoiceError.OperationCancelled)
+                    resolvedPromiseErr(thread, RTVIError.OperationCancelled)
                 }
             }
             .chain { currentConnection.ready }
@@ -273,7 +296,7 @@ open class VoiceClient(
      *
      * @return A Future, representing the asynchronous result of this operation.
      */
-    fun disconnect(): Future<Unit, VoiceError> {
+    fun disconnect(): Future<Unit, RTVIError> {
         return transport.disconnect()
     }
 
@@ -287,7 +310,7 @@ open class VoiceClient(
         thread.assertCurrent()
 
         awaitingServerResponse.values.forEach {
-            it(Result.Err(VoiceError.OperationCancelled))
+            it(Result.Err(RTVIError.OperationCancelled))
         }
 
         awaitingServerResponse.clear()
@@ -299,16 +322,16 @@ open class VoiceClient(
      * @param service Target service for this helper
      * @param helper Helper instance
      */
-    @Throws(VoiceException::class)
-    fun <E : VoiceClientHelper> registerHelper(service: String, helper: E): E {
+    @Throws(RTVIException::class)
+    fun <E : RTVIClientHelper> registerHelper(service: String, helper: E): E {
 
         thread.assertCurrent()
 
         if (helpers.containsKey(service)) {
-            throw VoiceException(VoiceError.OtherError("Helper targeting service '$service' already registered"))
+            throw RTVIException(RTVIError.OtherError("Helper targeting service '$service' already registered"))
         }
 
-        helper.registerVoiceClient(RegisteredVoiceClient(this, service))
+        helper.registerVoiceClient(RegisteredRTVIClient(this, service))
 
         val entry = RegisteredHelper(
             helper = helper,
@@ -323,21 +346,22 @@ open class VoiceClient(
     /**
      * Unregisters a helper from the client.
      */
-    @Throws(VoiceException::class)
+    @Throws(RTVIException::class)
     fun unregisterHelper(service: String) {
 
         thread.assertCurrent()
 
         val entry = helpers.remove(service)
-            ?: throw VoiceException(VoiceError.OtherError("Helper targeting service '$service' not found"))
+            ?: throw RTVIException(RTVIError.OtherError("Helper targeting service '$service' not found"))
 
         entry.helper.unregisterVoiceClient()
     }
 
     private inline fun <reified M, R> sendWithResponse(
         msg: MsgClientToServer,
+        allowSingleTurn: Boolean = false,
         crossinline filter: (M) -> R
-    ): Future<R, VoiceError> = withPromise(thread) { promise ->
+    ) = withPromise(thread) { promise ->
         thread.runOnThread {
 
             awaitingServerResponse[msg.id] = { result ->
@@ -350,12 +374,47 @@ open class VoiceClient(
                 }
             }
 
-            transport.sendMessage(msg).withErrorCallback {
-                awaitingServerResponse.remove(msg.id)
-                promise.resolveErr(it)
+            when (transport.state()) {
+                TransportState.Connected, TransportState.Ready -> {
+                    transport.sendMessage(msg)
+                        .withTimeout(10000)
+                        .withErrorCallback {
+                            awaitingServerResponse.remove(msg.id)
+                            promise.resolveErr(it)
+                        }
+                }
+
+                else -> if (allowSingleTurn) {
+                    post(
+                        thread = thread,
+                        url = options.params.baseUrl + options.params.endpoints.action,
+                        body = JSON_INSTANCE.encodeToString(
+                            Value.serializer(), Value.Object(
+                                (options.customBodyParams + options.params.requestData + listOf(
+                                    "actions" to Value.Array(
+                                        valueFrom(MsgClientToServer.serializer(), msg)
+                                    )
+                                )).toMap()
+                            )
+                        ).toRequestBody("application/json".toMediaType()),
+                        customHeaders = options.customHeaders + options.params.headers,
+                        responseHandler = { inputStream ->
+                            inputStream.parseServerSentEvents { msg ->
+                                transportCtx.onMessage(JSON_INSTANCE.decodeFromString(msg))
+                            }
+                        }
+                    ).withCallback {
+                        promise.resolveErr(
+                            when (it) {
+                                is Result.Err -> RTVIError.HttpError(it.error)
+                                is Result.Ok -> RTVIError.OtherError("Connection ended before result received")
+                            }
+                        )
+                    }
+                }
             }
         }
-    }.withTimeout(10000)
+    }
 
     /**
      * Instruct a backend service to perform an action.
@@ -364,18 +423,19 @@ open class VoiceClient(
         service: String,
         action: String,
         arguments: List<Option> = emptyList()
-    ): Future<Value, VoiceError> = sendWithResponse<MsgServerToClient.Data.ActionResponse, Value>(
-        MsgClientToServer.Action(
+    ): Future<Value, RTVIError> = sendWithResponse<MsgServerToClient.Data.ActionResponse, Value>(
+        msg = MsgClientToServer.Action(
             service = service,
             action = action,
             arguments = arguments
         ),
+        allowSingleTurn = true,
     ) { it.result }
 
     /**
      * Gets the current config from the server.
      */
-    fun getConfig(): Future<Config, VoiceError> =
+    fun getConfig(): Future<Config, RTVIError> =
         sendWithResponse<MsgServerToClient.Data.GetOrUpdateConfigResponse, Config>(
             MsgClientToServer.GetConfig()
         ) { Config(it.config) }
@@ -383,7 +443,7 @@ open class VoiceClient(
     /**
      * Updates the config on the server.
      */
-    fun updateConfig(update: List<ServiceConfig>): Future<Config, VoiceError> =
+    fun updateConfig(update: List<ServiceConfig>): Future<Config, RTVIError> =
         sendWithResponse<MsgServerToClient.Data.GetOrUpdateConfigResponse, Config>(
             MsgClientToServer.UpdateConfig(update)
         ) { Config(it.config) }
@@ -391,7 +451,7 @@ open class VoiceClient(
     /**
      * Returns the expected structure of the server config.
      */
-    fun describeConfig(): Future<List<ServiceConfigDescription>, VoiceError> =
+    fun describeConfig(): Future<List<ServiceConfigDescription>, RTVIError> =
         sendWithResponse<MsgServerToClient.Data.DescribeConfigResponse, List<ServiceConfigDescription>>(
             MsgClientToServer.DescribeConfig()
         ) { it.config }
@@ -399,7 +459,7 @@ open class VoiceClient(
     /**
      * Returns a list of supported actions.
      */
-    fun describeActions(): Future<List<ActionDescription>, VoiceError> =
+    fun describeActions(): Future<List<ActionDescription>, RTVIError> =
         sendWithResponse<MsgServerToClient.Data.DescribeActionsResponse, List<ActionDescription>>(
             MsgClientToServer.DescribeActions()
         ) { it.actions }
@@ -495,7 +555,7 @@ open class VoiceClient(
     }
 
     private inline fun assertReadyOrReturn(
-        returnAction: (Future<Unit, VoiceError>) -> Nothing
+        returnAction: (Future<Unit, RTVIError>) -> Nothing
     ) {
         thread.assertCurrent()
 
@@ -503,7 +563,7 @@ open class VoiceClient(
             returnAction(
                 resolvedPromiseErr(
                     thread,
-                    VoiceError.InvalidState(
+                    RTVIError.InvalidState(
                         expected = TransportState.Ready,
                         actual = state
                     )

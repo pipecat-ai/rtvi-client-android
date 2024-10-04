@@ -1,7 +1,7 @@
 package ai.rtvi.client.transport
 
-import ai.rtvi.client.VoiceClientOptions
-import ai.rtvi.client.VoiceEventCallbacks
+import ai.rtvi.client.RTVIClientOptions
+import ai.rtvi.client.RTVIEventCallbacks
 import ai.rtvi.client.utils.ThreadRef
 
 /**
@@ -9,8 +9,8 @@ import ai.rtvi.client.utils.ThreadRef
  */
 interface TransportContext {
 
-    val options: VoiceClientOptions
-    val callbacks: VoiceEventCallbacks
+    val options: RTVIClientOptions
+    val callbacks: RTVIEventCallbacks
     val thread: ThreadRef
 
     /**
