@@ -3,14 +3,13 @@ package ai.rtvi.client.utils
 import ai.rtvi.client.types.ServiceConfig
 import ai.rtvi.client.types.Value
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 @Serializable
 internal data class ConnectionBundle(
-    val services: Map<String, String>,
+    val services: Map<String, String>?,
     val config: List<ServiceConfig>
 ) {
 

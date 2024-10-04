@@ -1,32 +1,32 @@
 package ai.rtvi.client.helper
 
-import ai.rtvi.client.VoiceClient
+import ai.rtvi.client.RTVIClient
 import ai.rtvi.client.result.Future
-import ai.rtvi.client.result.VoiceError
-import ai.rtvi.client.result.VoiceException
+import ai.rtvi.client.result.RTVIError
+import ai.rtvi.client.result.RTVIException
 import ai.rtvi.client.result.resolvedPromiseErr
 import ai.rtvi.client.transport.MsgServerToClient
 import ai.rtvi.client.types.Option
 import ai.rtvi.client.utils.ThreadRef
 import java.util.concurrent.atomic.AtomicReference
 
-abstract class VoiceClientHelper {
+abstract class RTVIClientHelper {
 
-    private val voiceClient = AtomicReference<RegisteredVoiceClient?>(null)
+    private val voiceClient = AtomicReference<RegisteredRTVIClient?>(null)
 
     protected fun <R> withClient(
-        action: (RegisteredVoiceClient) -> Future<R, VoiceError>
-    ): Future<R, VoiceError> {
+        action: (RegisteredRTVIClient) -> Future<R, RTVIError>
+    ): Future<R, RTVIError> {
 
         val client = voiceClient.get() ?: return resolvedPromiseErr(
             ThreadRef.forMain(),
-            VoiceError.HelperNotRegistered
+            RTVIError.HelperNotRegistered
         )
 
         return client.client.thread.runOnThreadReturningFuture { action(client) }
     }
 
-    protected val client: RegisteredVoiceClient?
+    protected val client: RegisteredRTVIClient?
         get() = voiceClient.get()
 
     /**
@@ -40,23 +40,23 @@ abstract class VoiceClientHelper {
      */
     abstract fun getMessageTypes(): Set<String>
 
-    @Throws(VoiceException::class)
-    internal fun registerVoiceClient(client: RegisteredVoiceClient) {
+    @Throws(RTVIException::class)
+    internal fun registerVoiceClient(client: RegisteredRTVIClient) {
         if (!this.voiceClient.compareAndSet(null, client)) {
-            throw VoiceException(VoiceError.OtherError("Helper is already registered to a client"))
+            throw RTVIException(RTVIError.OtherError("Helper is already registered to a client"))
         }
     }
 
-    @Throws(VoiceException::class)
+    @Throws(RTVIException::class)
     internal fun unregisterVoiceClient() {
         if (voiceClient.getAndSet(null) == null) {
-            throw VoiceException(VoiceError.OtherError("Helper is not registered to a client"))
+            throw RTVIException(RTVIError.OtherError("Helper is not registered to a client"))
         }
     }
 }
 
-class RegisteredVoiceClient(
-    val client: VoiceClient,
+class RegisteredRTVIClient(
+    val client: RTVIClient,
     val service: String,
 ) {
     fun action(action: String, args: List<Option> = emptyList()) =

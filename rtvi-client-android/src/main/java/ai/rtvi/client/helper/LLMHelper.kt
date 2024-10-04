@@ -1,7 +1,7 @@
 package ai.rtvi.client.helper
 
 import ai.rtvi.client.result.Future
-import ai.rtvi.client.result.VoiceError
+import ai.rtvi.client.result.RTVIError
 import ai.rtvi.client.result.resolvedPromiseErr
 import ai.rtvi.client.transport.MsgClientToServer
 import ai.rtvi.client.transport.MsgServerToClient
@@ -23,7 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Helper for interacting with an LLM service.
  */
-class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
+class LLMHelper(private val callbacks: Callbacks) : RTVIClientHelper() {
 
     companion object {
         const val TAG = "LLMHelper"
@@ -80,7 +80,7 @@ class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
     /**
      * Returns the bot's current LLM context. Bot must be in the ready state.
      */
-    fun getContext(): Future<LLMContext, VoiceError> = withClient {
+    fun getContext(): Future<LLMContext, RTVIError> = withClient {
         it.ensureReady {
             it.action("get_context")
                 .map { result -> JSON_INSTANCE.decodeFromJsonElement<LLMContext>(result.asJsonElement()) }
@@ -96,7 +96,7 @@ class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
     fun setContext(
         context: LLMContext,
         interrupt: Boolean = false
-    ): Future<Unit, VoiceError> = withClient {
+    ): Future<Unit, RTVIError> = withClient {
         it.ensureReady {
             it.action(
                 "set_context",
@@ -117,7 +117,7 @@ class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
     fun appendToMessages(
         message: LLMContextMessage,
         runImmediately: Boolean = false
-    ): Future<Unit, VoiceError> = withClient {
+    ): Future<Unit, RTVIError> = withClient {
         it.ensureReady {
             it.action(
                 "append_to_messages",
@@ -138,7 +138,7 @@ class LLMHelper(private val callbacks: Callbacks) : VoiceClientHelper() {
      *
      * @param interrupt boolean - Whether to interrupt the bot, or wait until it has finished speaking
      */
-    fun run(interrupt: Boolean = false): Future<Unit, VoiceError> = withClient {
+    fun run(interrupt: Boolean = false): Future<Unit, RTVIError> = withClient {
         it.ensureReady {
             it.action("run", listOf("interrupt" setTo interrupt)).throwAwayResult()
         }
@@ -205,14 +205,14 @@ private fun Value.asJsonElement(): JsonElement = when (this) {
     Value.Null -> JsonNull
 }
 
-private fun <V> RegisteredVoiceClient.ensureReady(action: () -> Future<V, VoiceError>): Future<V, VoiceError> =
+private fun <V> RegisteredRTVIClient.ensureReady(action: () -> Future<V, RTVIError>): Future<V, RTVIError> =
     if (client.state == TransportState.Ready) {
         action()
     } else {
         resolvedPromiseErr(
             client.thread,
-            VoiceError.InvalidState(expected = TransportState.Ready, actual = client.state)
+            RTVIError.InvalidState(expected = TransportState.Ready, actual = client.state)
         )
     }
 
-private fun Future<Value, VoiceError>.throwAwayResult() = map {}
+private fun Future<Value, RTVIError>.throwAwayResult() = map {}

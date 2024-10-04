@@ -44,9 +44,9 @@ sealed interface Result<out V, out E> {
     /**
      * If the operation failed, throw a VoiceException, otherwise return the result.
      */
-    @Throws(VoiceException::class)
+    @Throws(RTVIException::class)
     fun throwError(): V = when(this) {
-        is Err -> throw VoiceException.from(error)
+        is Err -> throw RTVIException.from(error)
         is Ok -> value
     }
 

@@ -85,7 +85,7 @@ interface Future<V, E> {
      * Wait for the Future to complete using Kotlin Coroutines, and throw
      * a VoiceException if the operation failed.
      */
-    @Throws(VoiceException::class)
+    @Throws(RTVIException::class)
     suspend fun await() = awaitNoThrow().throwError()
 
     /**
@@ -101,11 +101,11 @@ interface Future<V, E> {
  *
  * @param durationMs Timeout in milliseconds.
  */
-fun <V> Future<V, VoiceError>.withTimeout(durationMs: Long): Future<V, VoiceError> =
+fun <V> Future<V, RTVIError>.withTimeout(durationMs: Long): Future<V, RTVIError> =
     withPromise(thread) { promise ->
 
         val timeoutEvent = Runnable {
-            promise.resolveErr(VoiceError.Timeout)
+            promise.resolveErr(RTVIError.Timeout)
         }
 
         this.withCallback {
