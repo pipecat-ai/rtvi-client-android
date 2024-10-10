@@ -40,6 +40,8 @@ import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
+private const val RTVI_PROTOCOL_VERSION = "0.2.0"
+
 /**
  * An RTVI client. Connects to an RTVI backend and handles bidirectional audio and video
  * streaming.
@@ -85,6 +87,10 @@ open class RTVIClient(
         action: ((Result<JsonElement, RTVIError>) -> Unit) -> Unit
     ) {
         val id = msg.id ?: throw Exception("${msg.type} missing ID")
+
+        if (id == "END") {
+            return
+        }
 
         val respondTo = awaitingServerResponse.remove(id)
             ?: throw Exception("${msg.type}: no responder for $id")
@@ -259,11 +265,13 @@ open class RTVIClient(
 
         // Send POST request to the provided base_url to connect and start the bot
 
+        val connectionData = ConnectionData.from(options)
+
         val body = ConnectionBundle(
             services = options.services?.associate { it.service to it.value },
-            config = options.config + options.params.config
+            config = connectionData.config
         )
-            .serializeWithCustomParams(options.customBodyParams + options.params.requestData)
+            .serializeWithCustomParams(connectionData.requestData)
             .toRequestBody("application/json".toMediaType())
 
         val currentConnection = Connection().apply { connection = this }
@@ -272,7 +280,7 @@ open class RTVIClient(
             thread = thread,
             url = options.params.baseUrl + options.params.endpoints.connect,
             body = body,
-            customHeaders = options.customHeaders + options.params.headers
+            customHeaders = connectionData.headers
         )
             .mapError<RTVIError> {
                 RTVIError.HttpError(it)
@@ -385,19 +393,22 @@ open class RTVIClient(
                 }
 
                 else -> if (allowSingleTurn) {
+
+                    val connectionData = ConnectionData.from(options)
+
                     post(
                         thread = thread,
                         url = options.params.baseUrl + options.params.endpoints.action,
                         body = JSON_INSTANCE.encodeToString(
                             Value.serializer(), Value.Object(
-                                (options.customBodyParams + options.params.requestData + listOf(
+                                (connectionData.requestData + listOf(
                                     "actions" to Value.Array(
                                         valueFrom(MsgClientToServer.serializer(), msg)
                                     )
                                 )).toMap()
                             )
                         ).toRequestBody("application/json".toMediaType()),
-                        customHeaders = options.customHeaders + options.params.headers,
+                        customHeaders = connectionData.headers,
                         responseHandler = { inputStream ->
                             inputStream.parseServerSentEvents { msg ->
                                 transportCtx.onMessage(JSON_INSTANCE.decodeFromString(msg))
@@ -570,5 +581,21 @@ open class RTVIClient(
                 )
             )
         }
+    }
+}
+
+private class ConnectionData(
+    val headers: List<Pair<String, String>>,
+    val requestData: List<Pair<String, Value>>,
+    val config: List<ServiceConfig>,
+) {
+    companion object {
+        fun from(value: RTVIClientOptions) = ConnectionData(
+            headers = value.customHeaders + value.params.headers,
+            requestData = listOf("rtvi_client_version" to Value.Str(RTVI_PROTOCOL_VERSION))
+                    + value.customBodyParams
+                    + value.params.requestData,
+            config = value.config + value.params.config
+        )
     }
 }
