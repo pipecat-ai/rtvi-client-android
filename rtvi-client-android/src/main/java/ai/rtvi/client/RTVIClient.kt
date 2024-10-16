@@ -200,6 +200,12 @@ open class RTVIClient(
                         callbacks.onBotTTSText(data)
                     }
 
+                    MsgServerToClient.Type.BotLlmStarted -> callbacks.onBotLLMStarted()
+                    MsgServerToClient.Type.BotLlmStopped -> callbacks.onBotLLMStopped()
+
+                    MsgServerToClient.Type.BotTtsStarted -> callbacks.onBotTTSStarted()
+                    MsgServerToClient.Type.BotTtsStopped -> callbacks.onBotTTSStopped()
+
                     MsgServerToClient.Type.StorageItemStored -> {
                         val data: MsgServerToClient.Data.StorageItemStoredData =
                             JSON_INSTANCE.decodeFromJsonElement(msg.data)

@@ -37,11 +37,11 @@ data class MsgServerToClient(
 
         // Service-specific
         const val BotLlmText = "bot-llm-text" // Streaming chunk/word, directly after LLM
-        const val BotLlmStarted = "bot-llm-started" // Unused
-        const val BotLlmStopped = "bot-llm-stopped" // Unused
-        const val BotTtsText = "bot-tts-text" // Unused
-        const val BotTtsStarted = "bot-tts-started" // Unused
-        const val BotTtsStopped = "bot-tts-stopped" // Unused
+        const val BotLlmStarted = "bot-llm-started"
+        const val BotLlmStopped = "bot-llm-stopped"
+        const val BotTtsText = "bot-tts-text"
+        const val BotTtsStarted = "bot-tts-started"
+        const val BotTtsStopped = "bot-tts-stopped"
 
         // Storage
         const val StorageItemStored = "storage-item-stored" // Item was stored
