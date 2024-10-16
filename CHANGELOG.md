@@ -1,3 +1,11 @@
+# 0.2.1
+
+- Added callbacks:
+  - onBotLLMStarted
+  - onBotLLMStopped
+  - onBotTTSStarted
+  - onBotTTSStopped
+
 # 0.2.0
 
 - Renamed:

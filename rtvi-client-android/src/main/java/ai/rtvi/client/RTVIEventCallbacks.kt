@@ -145,6 +145,26 @@ abstract class RTVIEventCallbacks {
     open fun onBotTTSText(data: MsgServerToClient.Data.BotTTSTextData) {}
 
     /**
+     * Invoked when the bot starts generating LLM text.
+     */
+    open fun onBotLLMStarted() {}
+
+    /**
+     * Invoked when the bot stops generating LLM text.
+     */
+    open fun onBotLLMStopped() {}
+
+    /**
+     * Invoked when the bot starts generating TTS output.
+     */
+    open fun onBotTTSStarted() {}
+
+    /**
+     * Invoked when the bot stops generating TTS output.
+     */
+    open fun onBotTTSStopped() {}
+
+    /**
      * Invoked when data is stored by the bot.
      */
     open fun onStorageItemStored(data: MsgServerToClient.Data.StorageItemStoredData) {}
